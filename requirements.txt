@@ -1,4 +1,4 @@
-cohere
 streamlit
-requests
-python-dotenv
+transformers
+torch
+
