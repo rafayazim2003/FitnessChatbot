@@ -1,76 +1,40 @@
-import pandas as pd
-import cohere
-import os
-from dotenv import load_dotenv
 import streamlit as st
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-# Load environment variables 
-load_dotenv()  
-cohere_api_key = os.environ["COHERE_API_KEY"]
-co = cohere.Client(cohere_api_key)
+# Title of the app
+st.title("Fitness Chatbot 💪")
+st.write("Ask me anything about fitness, workouts, or meal plans!")
 
-# --- Dataset Loading (Adapt This!) ---
-def load_exercise_data(csv_file):
-    df = pd.read_csv(csv_file)
-    # ... potentially extract relevant columns & data cleaning ... 
-    return df 
+# Load the chatbot model
+@st.cache_resource
+def load_chatbot():
+    tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
+    model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+    return pipeline("conversational", model=model, tokenizer=tokenizer)
 
-# Replace 'your_data.csv' with your actual filename
-exercise_data = load_exercise_data('megaGymDataset.csv') 
+chatbot = load_chatbot()
 
-# ---  Process User Queries ---
-def gather_user_preferences():
-    goal = st.selectbox("What's your main fitness goal?", 
-                        ["Weight Loss", "Build Muscle", "Endurance", "General Fitness"])
-    experience = st.radio("What's your experience level?",
-                          ["Beginner", "Intermediate", "Advanced"])
-    restrictions = st.checkbox("Any injuries or limitations?")
-    # ... more questions can be added
+# Chatbot conversation history
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-    return goal, experience, restrictions
+# User input
+user_input = st.text_input("You:", placeholder="Type your message here...")
 
-def process_query(query, exercise_data, user_preferences=None):
-    if user_preferences is None:
-         # First Time - Gather preferences
-         goal, experience, restrictions = gather_user_preferences()
-         return process_query(query, exercise_data, 
-                              user_preferences={"goal": goal, 
-                                            "experience": experience, 
-                                            "restrictions": restrictions})
+# Chatbot interaction
+if user_input:
+    from transformers import Conversation
+    conversation = Conversation(user_input)
+    result = chatbot(conversation)
 
-    # 2. General Workout or Fitness Questions using Cohere
-    prompt = craft_fitness_prompt(query, exercise_data)  # Helper function below
-    response = co.generate( 
-        model='command-nightly',  
-        prompt=prompt,   
-        stop_sequences=["--"]) 
-    return response.generations[0].text
+    # Save conversation history
+    st.session_state.history.append(("You", user_input))
+    st.session_state.history.append(("Bot", result.generated_responses[-1]))
 
-# --- Helper Functions (You might need to adjust) ---
-def user_asks_about_exercise(query):
-    # Simple keyword detection, make this smarter!
-    return "describe" in query or "how to" in query 
+# Display chat history
+for speaker, message in st.session_state.history:
+    if speaker == "You":
+        st.markdown(f"**{speaker}:** {message}")
+    else:
+        st.markdown(f"*{speaker}:* {message}")
 
-def extract_exercise_name(query):
-    # Basic extraction,  improve this with NLP techniques if needed
-    return query.split("describe ")[1] 
-
-def describe_exercise(exercise, data):
-    # ... lookup  exercise in 'data' & construct a description ...
-    return "Description from dataset here..." 
-
-def craft_fitness_prompt(query, data):
-    # ... construct the 'You are a fitness expert...' type prompt  ...
-    return "User Query: " + query 
-
-# --- Streamlit UI ---
-st.title("Fitness Knowledge Bot")
-
-# Gather preferences right at the start 
-user_preferences = gather_user_preferences() 
-
-user_input = st.text_input("Ask me about workouts or fitness...")
-
-if st.button("Submit"): 
-  chatbot_response = process_query(user_input, exercise_data, user_preferences)
-  st.write("Chatbot:", chatbot_response) 
