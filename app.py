@@ -1,3 +1,4 @@
+
 import openai
 import pandas as pd
 import streamlit as st
@@ -9,7 +10,6 @@ openai.api_key = openai_api_key
 # --- Dataset Loading (Adapt this to your actual dataset) ---
 def load_exercise_data(csv_file):
     df = pd.read_csv(csv_file)
-    # Perform any necessary data cleaning or column extraction
     return df
 
 # Replace 'cleaned_megaGymDataset.csv' with your actual filename or path to your dataset
@@ -44,14 +44,16 @@ def process_query(query, exercise_data, user_preferences):
     # Call the OpenAI API
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # Replace with "gpt-3.5-turbo" if using GPT-3.5
+            model="gpt-4",  # Use gpt-3.5-turbo if needed
             messages=[
                 {"role": "system", "content": "You are a fitness expert."},
                 {"role": "user", "content": prompt}
             ]
         )
-        return response["choices"][0]["message"]["content"]
+        # Extract and return the response content
+        return response.choices[0].message.content
     except openai.error.OpenAIError as e:
+        # Handle OpenAI errors gracefully
         return f"An error occurred while processing your request: {str(e)}"
 
 # --- Helper Functions ---
@@ -85,3 +87,4 @@ if st.button("Submit"):
     # Process the query and display the response
     chatbot_response = process_query(user_input, exercise_data, st.session_state['user_preferences'])
     st.write("Chatbot Response:", chatbot_response)
+
