@@ -1,12 +1,10 @@
-import cohere
+import openai
 import pandas as pd
 import streamlit as st
 
-# Access the API key from Streamlit Secrets
-cohere_api_key = st.secrets["COHERE_API_KEY"]
-
-# Initialize the Cohere client with the API key
-co = cohere.Client(cohere_api_key)
+# Access the OpenAI API key from Streamlit Secrets
+openai_api_key = st.secrets["OPENAI_API_KEY"]
+openai.api_key = openai_api_key
 
 # --- Dataset Loading (Adapt this to your actual dataset) ---
 def load_exercise_data(csv_file):
@@ -30,20 +28,21 @@ def gather_user_preferences():
 
 def process_query(query, exercise_data, user_preferences=None):
     if user_preferences is None:
-         # First time - Gather preferences
-         goal, experience, restrictions = gather_user_preferences()
-         return process_query(query, exercise_data, 
-                              user_preferences={"goal": goal, 
-                                                "experience": experience, 
-                                                "restrictions": restrictions})
+        # First time - Gather preferences
+        goal, experience, restrictions = gather_user_preferences()
+        return process_query(query, exercise_data, 
+                             user_preferences={"goal": goal, 
+                                               "experience": experience, 
+                                               "restrictions": restrictions})
 
-    # 2. General Workout or Fitness Questions using Cohere
-    prompt = craft_fitness_prompt(query, exercise_data)  # Helper function below
-    response = co.generate( 
-        model='command-nightly',  
-        prompt=prompt,   
-        stop_sequences=["--"]) 
-    return response.generations[0].text
+    # 2. General Workout or Fitness Questions using OpenAI
+    prompt = craft_fitness_prompt(query, exercise_data, user_preferences)  # Helper function below
+    response = openai.ChatCompletion.create(
+        model="gpt-4",  # Replace with "gpt-3.5-turbo" if using GPT-3.5
+        messages=[{"role": "system", "content": "You are a fitness expert."},
+                  {"role": "user", "content": prompt}]
+    )
+    return response["choices"][0]["message"]["content"]
 
 # --- Helper Functions ---
 def user_asks_about_exercise(query):
@@ -58,9 +57,19 @@ def describe_exercise(exercise, data):
     # Lookup exercise in the dataset and construct a description
     return "Description from dataset here..."  # Modify with actual lookup logic
 
-def craft_fitness_prompt(query, data):
-    # Construct a custom prompt for Cohere to generate a fitness response
-    return "User Query: " + query
+def craft_fitness_prompt(query, data, user_preferences):
+    # Construct a custom prompt for OpenAI to generate a fitness response
+    goal = user_preferences.get("goal")
+    experience = user_preferences.get("experience")
+    restrictions = user_preferences.get("restrictions")
+    restrictions_text = "with no restrictions" if not restrictions else f"with the following restrictions: {restrictions}"
+
+    return (
+        f"User Query: {query}\n"
+        f"User Info: Goal: {goal}, Experience: {experience}, Restrictions: {restrictions_text}.\n"
+        f"Exercise Data: {data.head(3).to_string(index=False)}\n"
+        f"Provide a concise and helpful answer."
+    )
 
 # --- Streamlit UI ---
 st.title("Fitness Knowledge Bot")
@@ -75,6 +84,3 @@ if st.button("Submit"):
     # Process the query and display response
     chatbot_response = process_query(user_input, exercise_data, user_preferences)
     st.write("Chatbot Response:", chatbot_response)
- 
-
-
