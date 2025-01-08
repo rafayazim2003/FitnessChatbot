@@ -1,4 +1,4 @@
-cohere
+openai
 streamlit
 requests
 python-dotenv
