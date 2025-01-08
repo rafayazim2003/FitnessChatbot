@@ -71,3 +71,5 @@ if st.button("Submit"):
     # Process the query and display response
     chatbot_response = process_query(user_input, exercise_data, st.session_state.user_preferences)
     st.write("Chatbot Response:", chatbot_response)
+
+    
