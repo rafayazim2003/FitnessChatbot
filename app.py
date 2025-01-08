@@ -13,7 +13,7 @@ def load_exercise_data(csv_file):
     return df 
 
 # Replace 'your_data.csv' with the actual filename or path to your dataset
-exercise_data = load_exercise_data('megaGymDataset.csv') 
+exercise_data = load_exercise_data('cleaned_megaGymDataset.csv') 
 
 # --- Process User Queries ---
 def gather_user_preferences():
