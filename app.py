@@ -24,16 +24,12 @@ def gather_user_preferences():
     restrictions = st.checkbox("Any injuries or limitations?")
     # Add more questions here if necessary
 
-    return goal, experience, restrictions
+    return {"goal": goal, "experience": experience, "restrictions": restrictions}
 
-def process_query(query, exercise_data, user_preferences=None):
+def process_query(query, exercise_data, user_preferences):
     if user_preferences is None:
         # First time - Gather preferences
-        goal, experience, restrictions = gather_user_preferences()
-        return process_query(query, exercise_data, 
-                             user_preferences={"goal": goal, 
-                                               "experience": experience, 
-                                               "restrictions": restrictions})
+        user_preferences = gather_user_preferences()
 
     # 2. General Workout or Fitness Questions using OpenAI
     prompt = craft_fitness_prompt(query, exercise_data, user_preferences)  # Helper function below
@@ -47,18 +43,6 @@ def process_query(query, exercise_data, user_preferences=None):
     return response["choices"][0]["message"]["content"]
 
 # --- Helper Functions ---
-def user_asks_about_exercise(query):
-    # Simple keyword detection, make this smarter if needed
-    return "describe" in query or "how to" in query 
-
-def extract_exercise_name(query):
-    # Basic extraction, improve with NLP techniques if necessary
-    return query.split("describe ")[1] 
-
-def describe_exercise(exercise, data):
-    # Lookup exercise in the dataset and construct a description
-    return "Description from dataset here..."  # Modify with actual lookup logic
-
 def craft_fitness_prompt(query, data, user_preferences):
     # Construct a custom prompt for OpenAI to generate a fitness response
     goal = user_preferences.get("goal")
@@ -76,16 +60,14 @@ def craft_fitness_prompt(query, data, user_preferences):
 # --- Streamlit UI ---
 st.title("Fitness Knowledge Bot")
 
-# Gather user preferences right at the start
-user_preferences = gather_user_preferences() 
+# Declare `user_preferences` at the start to ensure it's initialized
+if 'user_preferences' not in st.session_state:
+    st.session_state.user_preferences = gather_user_preferences()  # Initialize it once
 
 # User input for asking fitness-related questions
 user_input = st.text_input("Ask me about workouts or fitness...")
 
 if st.button("Submit"): 
     # Process the query and display response
-    chatbot_response = process_query(user_input, exercise_data, user_preferences)
+    chatbot_response = process_query(user_input, exercise_data, st.session_state.user_preferences)
     st.write("Chatbot Response:", chatbot_response)
-
-   
-  
